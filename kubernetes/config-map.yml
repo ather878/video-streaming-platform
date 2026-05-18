@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: video-streaming
+data:
+  eureka.server: "http://eureka-service:8761/eureka/"
+  rabbitmq.host: "rabbitmq-service"
+  redis.host: "redis-service"
+  elasticsearch.host: "elasticsearch-service"
+

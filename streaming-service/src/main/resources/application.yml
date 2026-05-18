@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: streaming-service
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 60000ms
+
+server:
+  port: 8086
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+aws:
+  s3:
+    bucket: video-content
+    region: us-east-1
+
+# Upload service configuration for Feign/RestTemplate client
+upload-service:
+  url: http://localhost:8080/api
+
+logging:
+  level:
+    com.videostreaming.streaming: DEBUG

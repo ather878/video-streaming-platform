@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: transcoding-service
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8085
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+aws:
+  mediaconvert:
+    endpoint: https://mediaconvert.us-east-1.amazonaws.com
+
