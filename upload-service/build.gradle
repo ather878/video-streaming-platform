@@ -17,6 +17,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'software.amazon.awssdk:s3:2.20.0'
+    implementation 'io.minio:minio:8.4.3'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     runtimeOnly 'com.h2database:h2'

@@ -107,7 +107,7 @@ public class StreamingService {
         headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
         headers.set(HttpHeaders.CACHE_CONTROL, "public, max-age=3600");
 
-        return new ResponseEntity<>(inputStream, headers, HttpStatus.PARTIAL_CONTENT);
+        return new ResponseEntity<>(resource, headers, HttpStatus.PARTIAL_CONTENT);
     }
 
     /**

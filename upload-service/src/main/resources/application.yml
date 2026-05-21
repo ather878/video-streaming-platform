@@ -39,6 +39,13 @@ aws:
     bucket: video-uploads
     region: us-east-1
 
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: videos
+  default-expiry-hours: 24
+
 file:
   storage:
     location: ./storage/uploads

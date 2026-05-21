@@ -2,7 +2,6 @@ package com.videostreaming.video.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "videos")
@@ -12,8 +11,13 @@ public class Video {
         PUBLIC, PRIVATE, UNLISTED
     }
 
-    public enum UploadStatus {
-        PENDING, PROCESSING, COMPLETED, FAILED
+    public enum Status {
+        INITIATED,
+        UPLOADING,
+        UPLOADED,
+        PROCESSING,
+        READY,
+        FAILED
     }
 
     @Id
@@ -28,16 +32,11 @@ public class Video {
     @Column(nullable = false)
     private Long uploaderId;
 
-    // uploadId removed; relationship is maintained in upload-service (upload_files.video_id)
-
     @Column
     private String category;
 
     @Column
     private String thumbnailUrl;
-
-    @Column
-    private String videoUrl;
 
     @Column
     private Long durationInSeconds;
@@ -47,8 +46,8 @@ public class Video {
     private Visibility visibility = Visibility.PUBLIC;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'PENDING'")
-    private UploadStatus uploadStatus = UploadStatus.PENDING;
+    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'INITIATED'")
+    private Status status = Status.INITIATED;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -105,8 +104,6 @@ public class Video {
         this.uploaderId = uploaderId;
     }
 
-    // uploadId accessors removed
-
     public String getCategory() {
         return category;
     }
@@ -121,14 +118,6 @@ public class Video {
 
     public void setThumbnailUrl(String thumbnailUrl) {
         this.thumbnailUrl = thumbnailUrl;
-    }
-
-    public String getVideoUrl() {
-        return videoUrl;
-    }
-
-    public void setVideoUrl(String videoUrl) {
-        this.videoUrl = videoUrl;
     }
 
     public Long getDurationInSeconds() {
@@ -147,12 +136,12 @@ public class Video {
         this.visibility = visibility;
     }
 
-    public UploadStatus getUploadStatus() {
-        return uploadStatus;
+    public Status getStatus() {
+        return status;
     }
 
-    public void setUploadStatus(UploadStatus uploadStatus) {
-        this.uploadStatus = uploadStatus;
+    public void setStatus(Status status) {
+        this.status = status;
     }
 
     public LocalDateTime getCreatedAt() {

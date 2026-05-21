@@ -29,14 +29,12 @@ public class VideoService {
         video.setUploaderId(uploaderId);
         // uploadId removed; attachment is handled by upload-service calling /videos/{id}/attach-upload
         video.setCategory(req.getCategory());
-        video.setThumbnailUrl(req.getThumbnailUrl());
-        video.setVideoUrl(req.getVideoUrl());
         video.setDurationInSeconds(req.getDurationInSeconds());
         
         if (req.getVisibility() != null) {
             video.setVisibility(Video.Visibility.valueOf(req.getVisibility().toUpperCase()));
         }
-        video.setUploadStatus(Video.UploadStatus.PENDING);
+        video.setStatus(Video.Status.INITIATED);
         
         video = videoRepository.save(video);
         return new VideoDto.VideoResponse(video);
@@ -107,7 +105,7 @@ public class VideoService {
                 .orElseThrow(() -> new IllegalArgumentException("Video not found: " + videoId));
 
         // We don't store uploadId on Video; upload-service keeps the mapping.
-        video.setUploadStatus(Video.UploadStatus.COMPLETED);
+        video.setStatus(Video.Status.UPLOADED);
         video = videoRepository.save(video);
         return new VideoDto.VideoResponse(video);
     }

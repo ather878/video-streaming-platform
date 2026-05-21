@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { uploadAPI, videoAPI } from '../api/services';
+import { videoAPI, uploadAPI } from '../api/services';
 import { Upload as UploadIcon, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 
 export default function Upload() {
@@ -9,17 +9,14 @@ export default function Upload() {
   const [videoDetails, setVideoDetails] = useState({
     title: '',
     description: '',
-    category: '',
     visibility: 'PUBLIC',
-    videoUrl: 'http://...',
-    thumbnailUrl: 'http://...'
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   // Track each sequential step's status
   const [statusSteps, setStatusSteps] = useState({
-    metadata: 'idle',  // idle | loading | done | error
+    initiate: 'idle',  // idle | loading | done | error
     upload: 'idle',
   });
 
@@ -47,33 +44,71 @@ export default function Upload() {
     e.preventDefault();
     if (!videoDetails.title) return setError('Please enter a title');
     if (!file) return setError('Please select a video file');
+    console.log('Selected file: Hello');
 
     setSubmitting(true);
     setError('');
 
-    // Step 1: Save metadata first
     let createdVideo;
     try {
       updateStatus('metadata', 'loading');
+      console.log('Creating video metadata...');
+      console.log('Video details:', videoDetails);
       const response = await videoAPI.createVideo(videoDetails);
+      console.log('Created video:', response.data);
       createdVideo = response.data;
       updateStatus('metadata', 'done');
     } catch (err) {
+      console.error('Error creating video metadata:', err);
       updateStatus('metadata', 'error');
       setError(err.response?.data?.error || 'Failed to save video details. Please try again.');
       setSubmitting(false);
       return; // stop here, don't proceed to upload
     }
 
-    // Step 2: Upload file against the created video ID
+    let videoId;
     try {
+      // Step 1: Initiate upload to get presigned URL
+      updateStatus('initiate', 'loading');
+      console.log('Initiating upload...');
+      console.log('Video ID:', createdVideo.id);
+      console.log('File name:', file.name);
+      console.log('Content type:', file.type);
+      const initiateResponse = await uploadAPI.initiateUpload({
+        videoId: createdVideo.id,
+        fileName: file.name,
+        contentType: file.type
+      });
+      console.log('Initiate response:', initiateResponse.data);
+
+      const { video_id, presigned_url, object_key } = initiateResponse.data;
+      videoId = video_id;
+      updateStatus('initiate', 'done');
+
+      // Step 2: Upload file directly to MinIO using presigned URL
       updateStatus('upload', 'loading');
-      await uploadAPI.uploadVideo(file, createdVideo.id);
+      console.log('Uploading file...');
+      console.log('Presigned URL:', presigned_url);
+      console.log('File:', file);
+      const uploadResponse = await uploadAPI.uploadToMinIO(presigned_url, file);
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed with status ${uploadResponse.status}`);
+      }
+
       updateStatus('upload', 'done');
-      navigate(`/videos/${createdVideo.id}`);
+
+      // Navigate to video detail page
+      setTimeout(() => {
+        navigate(`/videos/${videoId}`);
+      }, 1000);
+
     } catch (err) {
-      updateStatus('upload', 'error');
-      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+      console.error('Error during upload:', err);
+      const failedStep = statusSteps.initiate === 'loading' ? 'initiate' : 'upload';
+      updateStatus(failedStep, 'error');
+      const errorMsg = err.response?.data?.error || err.message || 'Upload failed. Please try again.';
+      setError(errorMsg);
       setSubmitting(false);
     }
   };
@@ -128,6 +163,7 @@ export default function Upload() {
                 {file ? file.name : 'Drag and drop or click to select video'}
               </p>
               <p className="text-gray-500 text-sm">MP4, WebM, or other video formats</p>
+              {file && <p className="text-gray-400 text-xs mt-2">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
             </div>
           </div>
         </div>
@@ -165,45 +201,29 @@ export default function Upload() {
           ></textarea>
         </div>
 
-        {/* Category + Visibility */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              Category
-            </label>
-            <input
-              type="text"
-              name="category"
-              value={videoDetails.category}
-              onChange={handleInputChange}
-              disabled={submitting}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-              placeholder="e.g., Education, Music, Gaming"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              Visibility
-            </label>
-            <select
-              name="visibility"
-              value={videoDetails.visibility}
-              onChange={handleInputChange}
-              disabled={submitting}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            >
-              <option value="PUBLIC">Public</option>
-              <option value="PRIVATE">Private</option>
-              <option value="UNLISTED">Unlisted</option>
-            </select>
-          </div>
+        {/* Visibility */}
+        <div>
+          <label className="block text-gray-300 text-sm font-medium mb-2">
+            Visibility
+          </label>
+          <select
+            name="visibility"
+            value={videoDetails.visibility}
+            onChange={handleInputChange}
+            disabled={submitting}
+            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          >
+            <option value="PUBLIC">Public</option>
+            <option value="PRIVATE">Private</option>
+            <option value="UNLISTED">Unlisted</option>
+          </select>
         </div>
 
         {/* Sequential step status — only shown after submit */}
-        {(submitting || statusSteps.metadata !== 'idle') && (
+        {(submitting || statusSteps.initiate !== 'idle') && (
           <div className="bg-gray-700 rounded-lg px-4 py-3 space-y-2">
-            <StepIndicator label="Saving video details..." status={statusSteps.metadata} />
-            <StepIndicator label="Uploading video file..." status={statusSteps.upload} />
+            <StepIndicator label="Initiating upload..." status={statusSteps.initiate} />
+            <StepIndicator label="Uploading to storage..." status={statusSteps.upload} />
           </div>
         )}
 

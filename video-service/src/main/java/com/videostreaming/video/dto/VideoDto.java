@@ -93,11 +93,10 @@ public class VideoDto {
             this.uploaderId = video.getUploaderId();
             this.category = video.getCategory();
             this.thumbnailUrl = video.getThumbnailUrl();
-            this.videoUrl = video.getVideoUrl();
             this.durationInSeconds = video.getDurationInSeconds();
             // uploadId removed; upload relationship tracked in upload-service
             this.visibility = video.getVisibility().toString();
-            this.uploadStatus = video.getUploadStatus().toString();
+            this.uploadStatus = video.getStatus().toString();
             this.createdAt = video.getCreatedAt();
             this.updatedAt = video.getUpdatedAt();
         }

@@ -39,6 +39,22 @@ export const uploadAPI = {
     return client.post('/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
+  },
+  // Initiate presigned URL upload (new flow)
+  initiateUpload: (uploadRequest) =>
+    client.post('/upload/initiate', uploadRequest),
+
+  // Upload file directly to MinIO using presigned URL
+  uploadToMinIO: (presignedUrl, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return fetch(presignedUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type
+      }
+    });
   }
 };
 
