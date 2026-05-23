@@ -44,6 +44,9 @@ export const uploadAPI = {
   initiateUpload: (uploadRequest) =>
     client.post('/upload/initiate', uploadRequest),
 
+  getMinioStreamUrl: (videoId) =>
+    client.get(`/upload/${videoId}/stream-url`),
+
   // Upload file directly to MinIO using presigned URL
   uploadToMinIO: (presignedUrl, file) => {
     const formData = new FormData();

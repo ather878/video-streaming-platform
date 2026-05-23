@@ -2,6 +2,7 @@ package com.videostreaming.upload.service;
 
 import com.videostreaming.upload.dto.InitiateUploadRequest;
 import com.videostreaming.upload.dto.InitiateUploadResponse;
+import com.videostreaming.upload.dto.StreamResponse;
 import com.videostreaming.upload.model.MediaAsset;
 import com.videostreaming.upload.repository.MediaAssetRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,27 @@ public class UploadInitiationService {
                     .videoId(request.getVideoId())
                     .presignedUrl(presignedUrl)
                     .objectKey(objectKey)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to initiate upload", e);
+            throw new RuntimeException("Failed to initiate upload", e);
+        }
+    }
+
+    @Transactional
+    public StreamResponse getStreamUrl(UUID videoId) {
+        try {
+
+            MediaAsset mediaAsset = mediaAssetRepository.findByVideoId(videoId).get(0);
+
+            // Generate presigned URL
+            String presignedUrl = minioService.generatePresignedStreamUrl(
+                    mediaAsset.getObjectKey()
+            );
+
+            return StreamResponse.builder()
+                    .presignedUrl(presignedUrl)
                     .build();
 
         } catch (Exception e) {

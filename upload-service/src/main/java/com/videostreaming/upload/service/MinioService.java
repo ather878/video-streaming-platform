@@ -44,6 +44,26 @@ public class MinioService {
         }
     }
 
+    public String generatePresignedStreamUrl(String objectKey) {
+        try {
+
+            String presignedUrl = minioClient.getPresignedObjectUrl(
+                    io.minio.GetPresignedObjectUrlArgs.builder()
+                            .method(io.minio.http.Method.GET)
+                            .bucket(minioConfig.getBucketName())
+                            .object(objectKey)
+                            .expiry(1, TimeUnit.HOURS)
+                            .build()
+            );
+
+            log.info("Generated presigned URL for object: {}", objectKey);
+            return presignedUrl;
+        } catch (Exception e) {
+            log.error("Failed to generate presigned URL for object: {}", objectKey, e);
+            throw new RuntimeException("Failed to generate presigned URL", e);
+        }
+    }
+
     /**
      * Generate a presigned URL for downloading/reading from MinIO
      */

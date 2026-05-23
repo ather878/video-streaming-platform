@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { videoAPI, streamingAPI } from '../api/services';
+import { uploadAPI, videoAPI, streamingAPI } from '../api/services';
 import { AlertCircle, Loader, Play, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,12 +9,14 @@ export default function VideoDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [video, setVideo] = useState(null);
+  const [streamUrl, setStreamUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchVideo();
+    fetchStreamUrl();
   }, [videoId]);
 
   const fetchVideo = async () => {
@@ -31,6 +33,15 @@ export default function VideoDetail() {
       setLoading(false);
     }
   };
+
+  const fetchStreamUrl = async () => {
+      try {
+        const response = await uploadAPI.getMinioStreamUrl(videoId);
+        setStreamUrl(response.data.presigned_url);
+      } catch (err) {
+        console.error('Failed to fetch stream URL', err);
+      }
+    };
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this video?')) {
@@ -84,31 +95,23 @@ export default function VideoDetail() {
       )}
 
       {/* Video Player */}
-      <div className="bg-gray-800 rounded-lg overflow-hidden aspect-video flex items-center justify-center bg-black">
-        { (video.videoUrl || videoId) ? (
-          (() => {
-//             const streamUrl = video.videoUrl ? video.videoUrl : streamingAPI.getStreamUrl(videoId);
-            const streamUrl = streamingAPI.getStreamUrl(videoId);
-            return (
-              <video
-                controls
-                className="w-full h-full"
-                controlsList="nodownload"
-                preload="metadata"
-                crossOrigin="anonymous"
-              >
-                <source src={streamUrl} type={video.contentType || 'video/mp4'} />
-                Your browser does not support the video tag.
-              </video>
-            );
-          })()
+        {streamUrl ? (
+          <video
+            controls
+            className="w-full h-full"
+            controlsList="nodownload"
+            preload="metadata"
+            crossOrigin="anonymous"
+          >
+            <source src={streamUrl} type={video.contentType || 'video/mp4'} />
+            Your browser does not support the video tag.
+          </video>
         ) : (
           <div className="text-center">
             <Play size={64} className="mx-auto text-gray-500 mb-4" />
             <p className="text-gray-400">Video not available</p>
           </div>
         )}
-      </div>
 
       {/* Video Info */}
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
