@@ -89,6 +89,13 @@ public class VideoController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/update-thumbnail")
+    public ResponseEntity<VideoDto.VideoResponse> updateThumbnail(
+            @RequestBody VideoDto.UpdateThumbnailRequest req) {
+        VideoDto.VideoResponse response = videoService.updateVideo(req.getVideoId(), req);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * DELETE: DELETE /videos/{id}
      * Delete video (only uploader can delete)

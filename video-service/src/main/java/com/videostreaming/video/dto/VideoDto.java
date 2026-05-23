@@ -2,6 +2,7 @@ package com.videostreaming.video.dto;
 
 import com.videostreaming.video.model.Video;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class VideoDto {
 
@@ -138,6 +139,24 @@ public class VideoDto {
 
         public LocalDateTime getUpdatedAt() { return updatedAt; }
         public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    }
+
+    public static class UpdateThumbnailRequest
+    {
+        private UUID videoId;
+        private String presignedUrl;
+
+        public UpdateThumbnailRequest(UUID videoId, String presignedUrl)
+        {
+            this.videoId = videoId;
+            this.presignedUrl = presignedUrl;
+        }
+
+        public UUID getVideoId() { return videoId; }
+        public void setVideoId(UUID videoId) { this.videoId = videoId; }
+
+        public String getPresignedUrl() { return presignedUrl; }
+        public void setPresignedUrl(String presignedUrl) { this.presignedUrl = presignedUrl; }
     }
 }
 

@@ -87,6 +87,16 @@ public class VideoService {
     }
 
     @Transactional
+    public VideoDto.VideoResponse updateVideo(java.util.UUID videoId, VideoDto.UpdateThumbnailRequest req) {
+        Video video = videoRepository.findById(videoId)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found: " + videoId));
+
+        video.setThumbnailUrl(req.getPresignedUrl());
+        video = videoRepository.save(video);
+        return new VideoDto.VideoResponse(video);
+    }
+
+    @Transactional
     public void deleteVideo(java.util.UUID videoId, Long uploaderId) {
         Video video = videoRepository.findById(videoId)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found: " + videoId));
