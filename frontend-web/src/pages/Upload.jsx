@@ -98,6 +98,12 @@ export default function Upload() {
 
       updateStatus('upload', 'done');
 
+      // Step 3: Update video thumbnail
+      updateStatus('thumbnail', 'loading');
+      console.log('Updating thumbnail...');
+      await uploadAPI.updateThumbnail(videoId);
+      updateStatus('thumbnail', 'done');
+
       // Navigate to video detail page
       setTimeout(() => {
         navigate(`/videos/${videoId}`);

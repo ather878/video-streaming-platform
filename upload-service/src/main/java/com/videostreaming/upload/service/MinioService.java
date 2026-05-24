@@ -2,9 +2,13 @@ package com.videostreaming.upload.service;
 
 import com.videostreaming.upload.config.MinioConfig;
 import io.minio.MinioClient;
+import io.minio.errors.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -84,6 +88,20 @@ public class MinioService {
             log.error("Failed to generate presigned download URL for object: {}", objectKey, e);
             throw new RuntimeException("Failed to generate presigned download URL", e);
         }
+    }
+
+    public void uploadObject(String thumbnailObjectName, String thumbnailPath) throws IOException, ServerException,
+            InsufficientDataException, ErrorResponseException, NoSuchAlgorithmException, InvalidKeyException,
+            InvalidResponseException, XmlParserException, InternalException
+    {
+        minioClient.uploadObject(
+                io.minio.UploadObjectArgs.builder()
+                        .bucket(minioConfig.getBucketName())
+                        .object(thumbnailObjectName)
+                        .filename(thumbnailPath)
+                        .contentType("image/jpeg")
+                        .build()
+        );
     }
 
     /**

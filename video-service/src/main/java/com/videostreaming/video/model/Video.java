@@ -35,7 +35,7 @@ public class Video {
     @Column
     private String category;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String thumbnailUrl;
 
     @Column
