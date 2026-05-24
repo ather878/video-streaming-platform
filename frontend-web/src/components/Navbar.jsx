@@ -1,11 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Play, LogOut, Upload, Home as HomeIcon } from 'lucide-react';
+import { Play, LogOut, Upload, Home as HomeIcon, Bell, Search } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -13,59 +20,90 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 font-bold text-2xl text-red-600">
-          <Play size={28} />
+    <nav style={{
+      background: scrolled ? '#141414' : 'rgba(20,20,20,0.95)',
+      borderBottom: '1px solid #222',
+      padding: '0 1.5rem',
+      height: 56,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      transition: 'background 0.3s',
+    }}>
+      {/* Left — Logo + Nav Links */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <Link to="/" style={{ color: '#E50914', fontSize: 20, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+          <Play size={22} fill="#E50914" />
           StreamBox
         </Link>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-6">
-          {isAuthenticated ? (
-            <>
-              <Link
-                to="/"
-                className="flex items-center gap-2 hover:text-blue-400 transition"
-              >
-                <HomeIcon size={20} />
-                Home
-              </Link>
-              <Link
-                to="/upload"
-                className="flex items-center gap-2 hover:text-blue-400 transition"
-              >
-                <Upload size={20} />
-                Upload
-              </Link>
-              <div className="flex items-center gap-4">
-                <span className="text-gray-300">{user?.username}</span>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition"
-                >
-                  <LogOut size={18} />
-                  Logout
-                </button>
+        {isAuthenticated && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <Link to="/" style={navLinkStyle}>
+              <HomeIcon size={15} /> Home
+            </Link>
+            <Link to="/upload" style={navLinkStyle}>
+              <Upload size={15} /> Upload
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Right — Search + User */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {isAuthenticated ? (
+          <>
+            <Bell size={18} color="#aaa" style={{ cursor: 'pointer' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 4,
+                background: '#E50914', display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 500, color: 'white'
+              }}>
+                {user?.username?.[0]?.toUpperCase() || 'U'}
               </div>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="hover:text-blue-400 transition">
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition"
+              <span style={{ fontSize: 13, color: '#ccc' }}>{user?.username}</span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'transparent', border: '1px solid #333',
+                  color: '#aaa', padding: '5px 12px', borderRadius: 4,
+                  fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.target.style.borderColor = '#E50914'; e.target.style.color = '#fff'; }}
+                onMouseLeave={e => { e.target.style.borderColor = '#333'; e.target.style.color = '#aaa'; }}
               >
-                Sign Up
-              </Link>
-            </>
-          )}
-        </div>
+                <LogOut size={14} /> Logout
+              </button>
+            </div>
+          </>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Link to="/login" style={{ fontSize: 13, color: '#aaa', textDecoration: 'none' }}>
+              Login
+            </Link>
+            <Link to="/register" style={{
+              background: '#E50914', color: 'white',
+              padding: '6px 16px', borderRadius: 4,
+              fontSize: 13, fontWeight: 500, textDecoration: 'none',
+            }}>
+              Sign Up
+            </Link>
+          </div>
+        )}
       </div>
     </nav>
   );
 }
 
+const navLinkStyle = {
+  display: 'flex', alignItems: 'center', gap: 5,
+  fontSize: 13, color: '#aaa', textDecoration: 'none',
+  transition: 'color 0.15s',
+};

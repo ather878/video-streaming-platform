@@ -4,7 +4,6 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
@@ -16,7 +15,7 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-900 text-white">
+        <div style={{ minHeight: '100vh', background: '#141414', color: '#fff' }}>
           <Navbar />
           <main className="container mx-auto px-4 py-8">
             <Routes>
@@ -33,4 +32,3 @@ export default function App() {
     </Router>
   );
 }
-

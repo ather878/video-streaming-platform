@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, AlertCircle } from 'lucide-react';
+import { Play, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
@@ -15,7 +15,6 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       await login(usernameOrEmail, password);
       navigate('/');
@@ -27,62 +26,72 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <div className="bg-gray-800 p-8 rounded-lg w-full max-w-md border border-gray-700">
-        <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
-          <LogIn size={32} />
-          Login
-        </h1>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+      <div style={{
+        background: 'rgba(0,0,0,0.75)',
+        border: '1px solid #2a2a2a',
+        borderRadius: 8,
+        padding: '2.5rem',
+        width: '100%',
+        maxWidth: 400,
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '2rem' }}>
+          <Play size={24} fill="#E50914" color="#E50914" />
+          <span style={{ color: '#E50914', fontSize: 20, fontWeight: 500 }}>StreamBox</span>
+        </div>
+
+        <h1 style={{ fontSize: 22, fontWeight: 500, color: '#fff', marginBottom: '1.5rem' }}>Sign in</h1>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-4 flex gap-2">
-            <AlertCircle size={20} />
-            <p>{error}</p>
+          <div style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.3)', color: '#f09595', padding: '10px 14px', borderRadius: 4, marginBottom: '1rem', display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+            <AlertCircle size={15} /> {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              Username or Email
-            </label>
+            <label style={labelStyle}>Username or Email</label>
             <input
               type="text"
               value={usernameOrEmail}
-              onChange={(e) => setUsernameOrEmail(e.target.value)}
+              onChange={e => setUsernameOrEmail(e.target.value)}
               required
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
               placeholder="john_doe or john@example.com"
+              style={inputStyle}
             />
           </div>
-
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              Password
-            </label>
+            <label style={labelStyle}>Password</label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               required
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
               placeholder="••••••••"
+              style={inputStyle}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition"
+            style={{
+              width: '100%', padding: '11px',
+              background: loading ? '#555' : '#E50914',
+              color: 'white', border: 'none', borderRadius: 4,
+              fontSize: 15, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
+              marginTop: '0.5rem', fontFamily: 'inherit', transition: 'background 0.15s',
+            }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <p className="text-gray-400 text-center mt-6">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-blue-400 hover:text-blue-300">
-            Sign up
+        <p style={{ color: '#777', fontSize: 13, textAlign: 'center', marginTop: '1.5rem' }}>
+          New to StreamBox?{' '}
+          <Link to="/register" style={{ color: '#fff', textDecoration: 'none' }}>
+            Sign up now
           </Link>
         </p>
       </div>
@@ -90,3 +99,14 @@ export default function Login() {
   );
 }
 
+const labelStyle = {
+  display: 'block', fontSize: 12, color: '#888',
+  marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em',
+};
+
+const inputStyle = {
+  width: '100%', background: '#2a2a2a', border: '1px solid #333',
+  borderRadius: 4, padding: '10px 14px', fontSize: 14,
+  color: '#fff', outline: 'none', fontFamily: 'inherit',
+  boxSizing: 'border-box',
+};

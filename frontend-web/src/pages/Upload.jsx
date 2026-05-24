@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { videoAPI, uploadAPI } from '../api/services';
-import { Upload as UploadIcon, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { Upload as UploadIcon, AlertCircle, CheckCircle, Loader, Play } from 'lucide-react';
+
+const CATEGORIES = ['Education', 'Technology', 'Gaming', 'Entertainment', 'Music', 'Other'];
 
 export default function Upload() {
   const navigate = useNavigate();
@@ -10,14 +12,15 @@ export default function Upload() {
     title: '',
     description: '',
     visibility: 'PUBLIC',
+    category: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  // Track each sequential step's status
   const [statusSteps, setStatusSteps] = useState({
-    initiate: 'idle',  // idle | loading | done | error
+    metadata: 'idle',
+    initiate: 'idle',
     upload: 'idle',
+    thumbnail: 'idle',
   });
 
   const updateStatus = (key, value) =>
@@ -25,13 +28,12 @@ export default function Upload() {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type.startsWith('video/')) {
-        setFile(selectedFile);
-        setError('');
-      } else {
-        setError('Please select a valid video file');
-      }
+    if (!selectedFile) return;
+    if (selectedFile.type.startsWith('video/')) {
+      setFile(selectedFile);
+      setError('');
+    } else {
+      setError('Please select a valid video file');
     }
   };
 
@@ -44,203 +46,236 @@ export default function Upload() {
     e.preventDefault();
     if (!videoDetails.title) return setError('Please enter a title');
     if (!file) return setError('Please select a video file');
-    console.log('Selected file: Hello');
 
     setSubmitting(true);
     setError('');
 
+    // Step 1: Save metadata
     let createdVideo;
     try {
       updateStatus('metadata', 'loading');
-      console.log('Creating video metadata...');
-      console.log('Video details:', videoDetails);
       const response = await videoAPI.createVideo(videoDetails);
-      console.log('Created video:', response.data);
       createdVideo = response.data;
       updateStatus('metadata', 'done');
     } catch (err) {
-      console.error('Error creating video metadata:', err);
       updateStatus('metadata', 'error');
-      setError(err.response?.data?.error || 'Failed to save video details. Please try again.');
+      setError(err.response?.data?.error || 'Failed to save video details.');
       setSubmitting(false);
-      return; // stop here, don't proceed to upload
+      return;
     }
 
     let videoId;
     try {
-      // Step 1: Initiate upload to get presigned URL
+      // Step 2: Initiate upload
       updateStatus('initiate', 'loading');
-      console.log('Initiating upload...');
-      console.log('Video ID:', createdVideo.id);
-      console.log('File name:', file.name);
-      console.log('Content type:', file.type);
       const initiateResponse = await uploadAPI.initiateUpload({
         videoId: createdVideo.id,
         fileName: file.name,
-        contentType: file.type
+        contentType: file.type,
       });
-      console.log('Initiate response:', initiateResponse.data);
-
-      const { video_id, presigned_url, object_key } = initiateResponse.data;
+      const { video_id, presigned_url } = initiateResponse.data;
       videoId = video_id;
       updateStatus('initiate', 'done');
 
-      // Step 2: Upload file directly to MinIO using presigned URL
+      // Step 3: Upload to MinIO
       updateStatus('upload', 'loading');
-      console.log('Uploading file...');
-      console.log('Presigned URL:', presigned_url);
-      console.log('File:', file);
       const uploadResponse = await uploadAPI.uploadToMinIO(presigned_url, file);
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Upload failed with status ${uploadResponse.status}`);
-      }
-
+      if (!uploadResponse.ok) throw new Error(`Upload failed with status ${uploadResponse.status}`);
       updateStatus('upload', 'done');
 
-      // Step 3: Update video thumbnail
+      // Step 4: Generate thumbnail
       updateStatus('thumbnail', 'loading');
-      console.log('Updating thumbnail...');
-      await uploadAPI.updateThumbnail(videoId);
+      await uploadAPI.generateThumbnail(videoId);
       updateStatus('thumbnail', 'done');
 
-      // Navigate to video detail page
-      setTimeout(() => {
-        navigate(`/videos/${videoId}`);
-      }, 1000);
-
+      setTimeout(() => navigate(`/videos/${videoId}`), 1000);
     } catch (err) {
-      console.error('Error during upload:', err);
-      const failedStep = statusSteps.initiate === 'loading' ? 'initiate' : 'upload';
+      const failedStep = statusSteps.initiate === 'loading' ? 'initiate'
+        : statusSteps.upload === 'loading' ? 'upload' : 'thumbnail';
       updateStatus(failedStep, 'error');
-      const errorMsg = err.response?.data?.error || err.message || 'Upload failed. Please try again.';
-      setError(errorMsg);
+      setError(err.response?.data?.error || err.message || 'Upload failed.');
       setSubmitting(false);
     }
   };
 
-  const StepIndicator = ({ label, status }) => (
-    <div className="flex items-center gap-2 text-sm">
-      {status === 'idle' && <div className="w-4 h-4 rounded-full border border-gray-500" />}
-      {status === 'loading' && <Loader size={16} className="animate-spin text-blue-400" />}
-      {status === 'done' && <CheckCircle size={16} className="text-green-400" />}
-      {status === 'error' && <AlertCircle size={16} className="text-red-400" />}
-      <span className={
-        status === 'done' ? 'text-green-400' :
-        status === 'error' ? 'text-red-400' :
-        status === 'loading' ? 'text-blue-400' :
-        'text-gray-500'
-      }>
-        {label}
-      </span>
-    </div>
-  );
+  const progress = Object.values(statusSteps).filter(s => s === 'done').length;
+  const totalSteps = Object.keys(statusSteps).length;
+  const progressPct = (progress / totalSteps) * 100;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-4xl font-bold mb-2">Upload Video</h1>
-      <p className="text-gray-400 mb-8">Share your video with the world</p>
+    <div style={{ background: '#141414', minHeight: '100vh', margin: '-2rem -1rem', padding: 0 }}>
+      {/* Header */}
+      <div style={{ padding: '2rem 2rem 1rem', borderBottom: '1px solid #222' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 500, color: '#fff', marginBottom: 4 }}>Upload video</h1>
+        <p style={{ fontSize: 13, color: '#777' }}>Share your content with StreamBox viewers</p>
+      </div>
 
-      {error && (
-        <div className="bg-red-900 border border-red-700 text-red-200 px-4 py-3 rounded mb-6 flex gap-2">
-          <AlertCircle size={20} />
-          <p>{error}</p>
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', minHeight: 'calc(100vh - 113px)' }}>
+        {/* Left — Form */}
+        <div style={{ padding: '2rem', borderRight: '1px solid #222' }}>
+          {error && (
+            <div style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.3)', color: '#f09595', padding: '10px 14px', borderRadius: 4, marginBottom: '1.5rem', display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+              <AlertCircle size={15} /> {error}
+            </div>
+          )}
 
-      <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-8 border border-gray-700 space-y-6">
+          {/* Drop Zone */}
+          <div
+            onClick={() => !submitting && document.getElementById('fileInput').click()}
+            style={{
+              border: `2px dashed ${file ? '#E50914' : '#333'}`,
+              borderRadius: 8,
+              padding: '3rem 1rem',
+              textAlign: 'center',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              background: file ? 'rgba(229,9,20,0.05)' : 'transparent',
+              marginBottom: '1.5rem',
+              transition: 'all 0.2s',
+            }}
+          >
+            <UploadIcon size={40} color={file ? '#E50914' : '#444'} style={{ margin: '0 auto 12px' }} />
+            <p style={{ fontSize: 14, color: file ? '#fff' : '#888', marginBottom: 4 }}>
+              {file ? file.name : 'Drag and drop or click to select'}
+            </p>
+            <p style={{ fontSize: 12, color: '#555' }}>
+              {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : 'MP4, WebM, MOV up to 10 GB'}
+            </p>
+            <input id="fileInput" type="file" accept="video/*" onChange={handleFileChange} disabled={submitting} style={{ display: 'none' }} />
+          </div>
 
-        {/* File Picker */}
-        <div>
-          <label className="block text-gray-300 text-sm font-medium mb-4">
-            Select Video File
-          </label>
-          <div className="relative border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-blue-500 transition">
-            <input
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              disabled={submitting}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-            />
-            <div className="pointer-events-none">
-              <UploadIcon size={48} className="mx-auto text-gray-400 mb-2" />
-              <p className="text-gray-300">
-                {file ? file.name : 'Drag and drop or click to select video'}
-              </p>
-              <p className="text-gray-500 text-sm">MP4, WebM, or other video formats</p>
-              {file && <p className="text-gray-400 text-xs mt-2">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
+          {/* Title */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={labelStyle}>Title <span style={{ color: '#E50914' }}>*</span></label>
+            <input name="title" type="text" value={videoDetails.title} onChange={handleInputChange} disabled={submitting} placeholder="Give your video a great title" style={inputStyle(submitting)} />
+          </div>
+
+          {/* Description */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={labelStyle}>Description</label>
+            <textarea name="description" value={videoDetails.description} onChange={handleInputChange} disabled={submitting} rows={4} placeholder="Tell viewers about your video…" style={{ ...inputStyle(submitting), resize: 'vertical', minHeight: 90 }} />
+          </div>
+
+          {/* Category + Visibility */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select name="category" value={videoDetails.category} onChange={handleInputChange} disabled={submitting} style={{ ...inputStyle(submitting), cursor: 'pointer' }}>
+                <option value="">Select…</option>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Visibility</label>
+              <select name="visibility" value={videoDetails.visibility} onChange={handleInputChange} disabled={submitting} style={{ ...inputStyle(submitting), cursor: 'pointer' }}>
+                <option value="PUBLIC">Public</option>
+                <option value="UNLISTED">Unlisted</option>
+                <option value="PRIVATE">Private</option>
+              </select>
             </div>
           </div>
-        </div>
 
-        {/* Title */}
-        <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">
-            Title *
-          </label>
-          <input
-            type="text"
-            name="title"
-            value={videoDetails.title}
-            onChange={handleInputChange}
+          <button
+            onClick={handleSubmit}
             disabled={submitting}
-            required
-            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            placeholder="Enter video title"
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">
-            Description
-          </label>
-          <textarea
-            name="description"
-            value={videoDetails.description}
-            onChange={handleInputChange}
-            disabled={submitting}
-            rows="4"
-            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            placeholder="Enter video description"
-          ></textarea>
-        </div>
-
-        {/* Visibility */}
-        <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">
-            Visibility
-          </label>
-          <select
-            name="visibility"
-            value={videoDetails.visibility}
-            onChange={handleInputChange}
-            disabled={submitting}
-            className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            style={{
+              width: '100%', padding: '12px',
+              background: submitting ? '#333' : '#E50914',
+              color: submitting ? '#666' : 'white',
+              border: 'none', borderRadius: 4,
+              fontSize: 15, fontWeight: 500,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit', transition: 'background 0.15s',
+            }}
           >
-            <option value="PUBLIC">Public</option>
-            <option value="PRIVATE">Private</option>
-            <option value="UNLISTED">Unlisted</option>
-          </select>
+            {submitting ? 'Publishing…' : 'Publish video'}
+          </button>
         </div>
 
-        {/* Sequential step status — only shown after submit */}
-        {(submitting || statusSteps.initiate !== 'idle') && (
-          <div className="bg-gray-700 rounded-lg px-4 py-3 space-y-2">
-            <StepIndicator label="Initiating upload..." status={statusSteps.initiate} />
-            <StepIndicator label="Uploading to storage..." status={statusSteps.upload} />
-          </div>
-        )}
+        {/* Right — Sidebar */}
+        <div style={{ padding: '2rem', background: '#1a1a1a' }}>
+          <p style={sidebarTitleStyle}>Preview</p>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-semibold py-2 px-4 rounded transition"
-        >
-          {submitting ? 'Publishing...' : 'Publish Video'}
-        </button>
-      </form>
+          {/* Thumbnail preview */}
+          <div style={{ background: '#0a0a0a', borderRadius: 8, aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem', border: '1px solid #2a2a2a', overflow: 'hidden' }}>
+            {file ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Play size={36} color="#E50914" fill="#E50914" />
+                <p style={{ fontSize: 11, color: '#555', textAlign: 'center', padding: '0 1rem' }}>{file.name}</p>
+              </div>
+            ) : (
+              <Play size={40} color="#2a2a2a" />
+            )}
+          </div>
+
+          {/* Live title preview */}
+          <p style={{ fontSize: 14, fontWeight: 500, color: videoDetails.title ? '#fff' : '#444', marginBottom: 4, transition: 'color 0.2s' }}>
+            {videoDetails.title || 'No title yet'}
+          </p>
+          <p style={{ fontSize: 12, color: '#555', marginBottom: '1.5rem' }}>
+            {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : 'No file selected'}
+          </p>
+
+          {/* Progress bar */}
+          {submitting && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ height: 3, background: '#2a2a2a', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ height: 3, background: '#E50914', borderRadius: 99, width: `${progressPct}%`, transition: 'width 0.5s ease' }} />
+              </div>
+            </div>
+          )}
+
+          <p style={sidebarTitleStyle}>Upload steps</p>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {[
+              { key: 'metadata',  label: 'Save video details',   sub: { idle: 'Waiting…', loading: 'Saving…', done: 'Saved', error: 'Failed' } },
+              { key: 'initiate',  label: 'Initiate upload',       sub: { idle: 'Waiting…', loading: 'Getting URL…', done: 'Ready', error: 'Failed' } },
+              { key: 'upload',    label: 'Upload to storage',     sub: { idle: 'Waiting…', loading: 'Uploading…', done: 'Uploaded', error: 'Failed' } },
+              { key: 'thumbnail', label: 'Generate thumbnail',    sub: { idle: 'Waiting…', loading: 'Extracting frame…', done: 'Done', error: 'Failed' } },
+            ].map(({ key, label, sub }, i) => {
+              const state = statusSteps[key];
+              return (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: i < 3 ? '1px solid #222' : 'none' }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12,
+                    background: state === 'done' ? '#E50914' : 'transparent',
+                    border: `1px solid ${state === 'done' ? '#E50914' : state === 'active' ? '#E50914' : state === 'error' ? '#a32d2d' : '#333'}`,
+                    color: state === 'done' ? 'white' : state === 'error' ? '#f09595' : state === 'loading' ? '#E50914' : '#555',
+                  }}>
+                    {state === 'done' ? <CheckCircle size={14} /> :
+                     state === 'loading' ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> :
+                     state === 'error' ? <AlertCircle size={14} /> : i + 1}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 13, color: state === 'done' || state === 'loading' ? '#fff' : '#aaa', marginBottom: 2 }}>{label}</p>
+                    <p style={{ fontSize: 11, color: state === 'loading' ? '#E50914' : state === 'error' ? '#f09595' : '#555' }}>{sub[state] || 'Waiting…'}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
+
+const labelStyle = {
+  display: 'block', fontSize: 12, color: '#888',
+  marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em',
+};
+
+const inputStyle = (disabled) => ({
+  width: '100%', background: '#2a2a2a',
+  border: '1px solid #333', borderRadius: 4,
+  padding: '10px 14px', fontSize: 14, color: '#fff',
+  outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+  opacity: disabled ? 0.5 : 1,
+});
+
+const sidebarTitleStyle = {
+  fontSize: 12, fontWeight: 500, color: '#666',
+  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem',
+};

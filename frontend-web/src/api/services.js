@@ -47,7 +47,7 @@ export const uploadAPI = {
   getMinioStreamUrl: (videoId) =>
     client.get(`/upload/${videoId}/stream-url`),
 
-  updateThumbnail: (videoId) =>
+  generateThumbnail: (videoId) =>
     client.post(`/upload/${videoId}/thumbnail`),
 
   // Upload file directly to MinIO using presigned URL
