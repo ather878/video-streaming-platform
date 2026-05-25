@@ -6,7 +6,6 @@ spring:
       max-file-size: 5GB
       max-request-size: 5GB
   datasource:
-    url: jdbc:postgresql://localhost:5432/video_db
     username: ather
     password: jam18EE-t
     driver-class-name: org.postgresql.Driver
@@ -29,26 +28,16 @@ server:
     max-http-post-size: 5368709120
     max-swallow-size: 5368709120
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-
 aws:
   s3:
     bucket: video-uploads
     region: us-east-1
 
 minio:
-  url: http://localhost:9000
   access-key: minioadmin
   secret-key: minioadmin
   bucket-name: videos
   default-expiry-hours: 24
-
-file:
-  storage:
-    location: ./storage/uploads
 
 #spring:
 #  datasource:
